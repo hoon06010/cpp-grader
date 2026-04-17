@@ -1,0 +1,7 @@
+node_modules/
+output/
+students/*.o
+students/student_A
+students/student_B
+*.dSYM/
+.DS_Store
