@@ -1,0 +1,16 @@
+{
+  "name": "cpp-grader",
+  "version": "1.0.0",
+  "description": "C++ 과제 자동 채점 에이전트",
+  "main": "grade.js",
+  "scripts": {
+    "grade": "node grade.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "exceljs": "^4.4.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
