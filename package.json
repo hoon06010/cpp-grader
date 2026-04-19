@@ -4,10 +4,10 @@
   "description": "C++ 과제 자동 채점 에이전트",
   "main": "grade.js",
   "scripts": {
-    "grade": "node grade.js"
+    "grade": "node grade.js",
+    "update-criteria": "node lib/pptx-to-criteria.js"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "adm-zip": "^0.5.17",
     "exceljs": "^4.4.0"
   },
