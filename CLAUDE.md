@@ -48,7 +48,7 @@ node lib/prepare.js
 ```
 
 - `students/` 의 모든 `.zip` 파일을 `student_code/` 에 압축 해제
-- 각 `.cpp` 파일을 `g++` 로 컴파일
+- 각 `.cpp` 파일을 `g++` 로 컴파일 (`scanf_s` → `scanf` 자동 변환 후 컴파일)
 - 학생별 정보(학번, 이름, 코드, 컴파일 결과)를 JSON으로 출력
 
 ### 2단계 — 채점 기준 파악
@@ -115,5 +115,6 @@ node lib/save-results.js /tmp/grade_results.json
 
 - **API 키 불필요** — Claude Code (VS Code) 자신이 모든 코드 리뷰를 수행
 - `g++` 이 설치되어 있어야 컴파일 점수가 부여됨
+- `scanf_s` 사용 코드는 컴파일 전 자동으로 `scanf`로 변환됨 (원본 파일 무수정)
 - `student_code/` 는 채점 후 자동 삭제하지 않음
 - 스크린샷 폴더 등 `.cpp` 외 파일은 무시
