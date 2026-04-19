@@ -12,7 +12,6 @@ C++ 과제 자동 채점 에이전트입니다. 학생 `.cpp` 파일을 컴파�
 
 - Node.js 18 이상
 - g++ (macOS: Xcode Command Line Tools, Linux: `sudo apt install g++`)
-- Anthropic API 키
 
 ## 설치
 
