@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node lib/*)",
+      "Bash(node node_modules/*)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(node -e *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(for *)"
+    ]
+  }
+}
