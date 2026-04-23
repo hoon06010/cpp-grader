@@ -16,10 +16,12 @@ grader/
 ├── output/            # 채점 결과 Excel 파일
 └── lib/
     ├── prepare.js       # zip 압축 해제 + 컴파일 → JSON 출력
+    ├── static-check.js  # C++ 정적 분석 (void main, return, 변수명, 주석, 들여쓰기)
     ├── save-results.js  # 채점 결과 JSON → Excel 저장
     ├── pptx-to-criteria.js  # PPTX 슬라이드 텍스트 추출 → stdout
     ├── extractor.js     # zip 파싱/압축 해제 유틸
     ├── compiler.js      # g++ 컴파일 유틸
+    ├── runner.js        # 자동 테스트케이스 실행
     └── excel.js         # Excel 생성 유틸
 ```
 
@@ -35,6 +37,7 @@ node lib/pptx-to-criteria.js hw1.pptx    # 특정 파일 지정
 
 - 스크립트는 PPTX에서 슬라이드 텍스트를 추출해 stdout으로 출력
 - Claude Code가 그 텍스트를 읽고 `criteria.md`를 직접 작성
+- **`criteria.md`가 PPTX보다 최신이면 자동 스킵** — 강제 재추출: `node lib/pptx-to-criteria.js --force`
 - **API 키 불필요** — Claude Code 자신이 처리
 
 ## 채점 워크플로우
@@ -50,10 +53,17 @@ node lib/prepare.js
 - `students/` 의 모든 `.zip` 파일을 `student_code/` 에 압축 해제
 - 각 `.cpp` 파일을 `g++` 로 컴파일 (Windows `_s` 함수 호환 매크로 자동 주입, `void main` → `int main` 변환 후 컴파일)
 - 중첩 zip 파일 재귀 압축 해제, `__MACOSX` 폴더 및 `._*` 파일 자동 제외
-- 학생별 정보(학번, 이름, 코드, 컴파일 결과)를 JSON으로 출력
+- 학생별 정보(학번, 이름, 파일 경로, 컴파일 결과)를 JSON으로 출력
+- 코드 본문은 JSON에 포함하지 않음 — `codePath` 경로만 출력, Claude가 필요시 Read 툴로 로드
 - 컴파일 성공 시 `lib/runner.js`의 테스트케이스를 자동 실행
-  - `allTestsPassed: true` → `code` 필드가 `null`로 출력됨 (만점 확정, Claude 리뷰 불필요)
-  - `allTestsPassed: false` 또는 `ran: false` → `code` 필드에 소스 코드 포함
+- 컴파일 성공 시 `lib/static-check.js`의 정적 분석도 자동 실행 (`staticChecks` 필드)
+  - `noVoidMain`: void main 사용 없음
+  - `hasReturnInMain`: main에 return 문 존재
+  - `noPoorVarNames`: 의미 없는 단일 문자 변수명 없음 (i/j/k/n 등은 허용)
+  - `hasComments`: 주석 존재
+  - `consistentIndent`: 탭/스페이스 혼용 없음
+- `codeHash` 필드: 공백 정규화 후 SHA-256 앞 12자리 — 중복 제출 감지용
+- `skipReview: true` → 코드 Read 불필요, 자동 만점 처리 (`allTestsPassed && staticChecks.allPassed`)
 
 ### 2단계 — 채점 기준 파악
 
@@ -61,15 +71,20 @@ node lib/prepare.js
 
 ### 3단계 — 코드 리뷰 (Claude Code 직접 수행)
 
-prepare.js 출력 JSON의 각 항목에 대해 Claude Code가 직접 코드를 검토한다.
-외부 API를 호출하지 않고, 현재 대화 컨텍스트 안에서 판단한다.
+**리뷰는 한 명씩 순차 처리한다.** 전체 코드를 한꺼번에 컨텍스트에 올리지 않는다.
 
-**평가 방법:**
-- `allTestsPassed: true` 항목 → 해당 문제는 **만점 처리**, 코드 리뷰 생략 (토큰 절감)
-  - `deductions`는 빈 문자열, `criteriaScore` = 해당 문제 배점 그대로
-- `allTestsPassed: false` 또는 `ran: false` 항목 → `criteria.md` 각 항목에서 **감점 요인만** 확인
-- 코드의 장점은 보지 않는다 — 기준 미충족 항목과 컴파일 실패 원인만 찾는다
-- 항목 미충족 → 해당 배점만큼 감점 / 충족 → 넘어감
+**`skipReview: true` 항목 → 코드를 읽지 않는다 (토큰 0):**
+- 자동 만점 처리: `criteriaScore = maxCriteriaScore`, `deductions = ""`
+
+**동일 `codeHash`를 가진 학생이 이미 채점된 경우:**
+- 해당 학생의 `deductions` 결과를 그대로 복사한다 — 코드 Read 생략
+
+**`skipReview: false` 항목 → 코드 리뷰 수행:**
+- Read 툴로 `codePath` 파일을 로드한다 (JSON에 코드 본문 없음)
+- `criteria.md` 각 항목에서 **감점 요인만** 확인
+- `staticChecks` 의 `false` 항목은 이미 감점 사유 — criteria.md와 대조해 점수 반영
+- 코드의 장점, 칭찬, 설명은 **절대 출력하지 않는다** — 감점 라인만 출력
+- 항목 미충족 → 해당 배점만큼 감점 / 충족 → 넘어감 (언급 없음)
 - 컴파일 실패 시: 기능 구현 점수 0점, 컴파일 오류 메시지 기록
 
 **각 학생에 대해 산출:**
