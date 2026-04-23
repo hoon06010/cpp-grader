@@ -1,21 +1,21 @@
-# cpp-grader
+# cpp-grader (Gemini CLI)
 
-C++ 과제 자동 채점 에이전트입니다. 학생 `.zip` 파일을 압축 해제하고 컴파일한 뒤, **Claude Code 자신이** 채점 기준에 따라 코드를 리뷰하고 결과를 Excel 파일로 저장합니다.
+C++ 과제 자동 채점 에이전트입니다. 학생 `.zip` 파일을 압축 해제하고 컴파일한 뒤, **Gemini CLI 자신이** 채점 기준에 따라 코드를 리뷰하고 결과를 Excel 파일로 저장합니다.
 
-> API 키 불필요 — Claude Code (VS Code 확장)가 모든 코드 리뷰를 직접 수행합니다.
+> API 키 불필요 — Gemini CLI가 모든 코드 리뷰를 직접 수행합니다.
 
 ## 기능
 
 - **PPTX → criteria.md 자동 변환**: 채점 기준 PPTX 슬라이드를 읽어 `criteria.md` 자동 생성
 - **컴파일 채점**: g++으로 컴파일 성공 시 10점, 실패 시 0점 (Windows `_s` 함수 호환 매크로, `void main` → `int main` 자동 변환 지원)
-- **AI 코드 리뷰**: Claude Code가 `criteria.md`를 읽고 감점 항목 중심으로 항목별 점수 산출
+- **AI 코드 리뷰**: Gemini CLI가 `criteria.md`를 읽고 감점 항목 중심으로 항목별 점수 산출
 - **Excel 출력**: 기존 파일에 열 추가 또는 새 파일 생성
 
 ## 요구사항
 
 - Node.js 18 이상
 - g++ (macOS: Xcode Command Line Tools, Linux: `sudo apt install g++`)
-- Claude Code VS Code 확장
+- **Gemini CLI**
 
 ## 설치
 
@@ -31,7 +31,7 @@ npm install
 
 **방법 A — PPTX 변환 (권장)**
 
-`uploads/` 폴더에 `.pptx` 파일을 넣은 뒤 `/grade` 명령을 실행하면 Claude Code가 자동으로 `criteria.md`를 생성합니다.
+`uploads/` 폴더에 `.pptx` 파일을 넣은 뒤 채점 명령을 실행하면 Gemini CLI가 자동으로 `criteria.md`를 생성합니다.
 
 **방법 B — 직접 작성**
 
@@ -65,11 +65,7 @@ students/
 
 ### 3. 채점 실행
 
-Claude Code에서 `/grade` 명령을 실행합니다.
-
-```
-/grade
-```
+`GEMINI.md`에 명시된 워크플로우를 따라 채점을 진행합니다.
 
 결과는 `output/` 폴더에 Excel 파일로 저장됩니다.
 
