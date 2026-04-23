@@ -9,6 +9,7 @@
       "Bash(cat *)",
       "Bash(ls *)",
       "Bash(for *)"
+      "Bash(git *)"
     ]
   }
 }
