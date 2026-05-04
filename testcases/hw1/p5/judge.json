@@ -1,0 +1,8 @@
+{
+  "mode": "contains_float",
+  "cases": [
+    { "input": "2.0\n3\n",  "expected": 8,    "epsilon": 0.5, "desc": "2^3=8",    "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "3.0\n2\n",  "expected": 9,    "epsilon": 0.5, "desc": "3^2=9",    "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "2.0\n10\n", "expected": 1024, "epsilon": 0.5, "desc": "2^10=1024","deduction": {"label": "결과 오류", "points": -2} }
+  ]
+}

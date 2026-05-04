@@ -1,0 +1,6 @@
+{
+  "mode": "custom",
+  "cases": [
+    { "input": "", "desc": "1~100 소수 전체 포함", "deduction": {"label": "소수 계산 오류", "points": -2} }
+  ]
+}

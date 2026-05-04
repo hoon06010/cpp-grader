@@ -22,7 +22,12 @@ grader/
     ├── extractor.js     # zip 파싱/압축 해제 유틸
     ├── compiler.js      # g++ 컴파일 유틸
     ├── runner.js        # 자동 테스트케이스 실행
-    └── excel.js         # Excel 생성 유틸
+    ├── excel.js         # Excel 생성 유틸
+    ├── compare.js       # 출력 비교 유틸 (runner.js 사용)
+    ├── db.js            # 제출 이력 SQLite DB
+    ├── dashboard.js     # 채점 결과 HTML 대시보드 생성
+    ├── auto-grade.js    # 테스트케이스 기반 자동 채점 (prepare-from-extracted 연계)
+    └── prepare-from-extracted.js  # 압축 해제된 소스 기반 준비
 ```
 
 ## PPTX → criteria.md 자동 업데이트
@@ -44,10 +49,12 @@ node lib/pptx-to-criteria.js hw1.pptx    # 특정 파일 지정
 
 `/grade` 실행 시 아래 순서를 반드시 따른다.
 
+> **배치 처리:** `/grade`는 1회 실행 시 최대 10명(1배치)만 처리한다. 전체 학생 수가 10명 초과이면 여러 번 `/grade`를 실행한다. 배치 진행 상황은 `/tmp/grade_batch_{n}.json` 파일로 관리하며, 모든 배치 완료 후 병합해 Excel에 저장한다. 자세한 배치 흐름은 `.claude/commands/grade.md` 참조.
+
 ### 1단계 — 준비 (기계적 작업)
 
 ```bash
-node lib/prepare.js
+node lib/prepare.js [--sandbox rlimit|docker|none]
 ```
 
 - `students/` 의 모든 `.zip` 파일을 `student_code/` 에 압축 해제
@@ -55,15 +62,25 @@ node lib/prepare.js
 - 중첩 zip 파일 재귀 압축 해제, `__MACOSX` 폴더 및 `._*` 파일 자동 제외
 - 학생별 정보(학번, 이름, 파일 경로, 컴파일 결과)를 JSON으로 출력
 - 코드 본문은 JSON에 포함하지 않음 — `codePath` 경로만 출력, Claude가 필요시 Read 툴로 로드
-- 컴파일 성공 시 `lib/runner.js`의 테스트케이스를 자동 실행
+- 컴파일 성공 시 `testcases/hw{n}/p{m}/judge.json` 기반 테스트케이스를 자동 실행
+  - `exact` / `contains_integer` / `contains_float` / `regex` / `custom(judge.js)` 모드 지원
+  - 새 과제 추가 시 `testcases/hw2/p1/judge.json` 파일만 생성하면 코드 수정 불필요
 - 컴파일 성공 시 `lib/static-check.js`의 정적 분석도 자동 실행 (`staticChecks` 필드)
   - `noVoidMain`: void main 사용 없음
   - `hasReturnInMain`: main에 return 문 존재
   - `noPoorVarNames`: 의미 없는 단일 문자 변수명 없음 (i/j/k/n 등은 허용)
   - `hasComments`: 주석 존재
   - `consistentIndent`: 탭/스페이스 혼용 없음
-- `codeHash` 필드: 공백 정규화 후 SHA-256 앞 12자리 — 중복 제출 감지용
-- `skipReview: true` → 코드 Read 불필요, 자동 만점 처리 (`allTestsPassed && staticChecks.allPassed`)
+  - `hw1SentinelOk`: HW1-1 전용 — -1 입력 종료 패턴 (while/do 루프 + -1 비교)
+  - `hasOvertime`: HW1-1 전용 — 초과근무 1.5배 계산 패턴
+- `codeHash` 필드: 공백 정규화 후 SHA-256 앞 12자리 — 중복 제출 감지용, `grader.db`(SQLite)에 제출 이력 자동 기록
+- `skipReview: true` → 코드 Read 불필요, 자동 처리. 아래 조건 중 하나라도 해당하면 true:
+  - 동일 해시 이전 만점 이력 존재 (`prevPass`)
+  - HW1-1 전용 조건 통과 (`hw1SentinelOk && hasOvertime`)
+  - 모든 테스트케이스 통과 (`allTestsPassed`)
+  - 실패 테스트케이스 전부에 deduction 메타데이터 존재 (`autoDeductions.length > 0`)
+  - 참고: `staticChecks.allPassed`는 skipReview 조건에 포함되지 않음 (참고용)
+- `--sandbox` 옵션: `rlimit`(기본, shell ulimit으로 메모리·CPU 제한) / `docker`(네트워크·파일시스템 완전 격리) / `none`(개발용)
 
 ### 2단계 — 채점 기준 파악
 
@@ -74,7 +91,8 @@ node lib/prepare.js
 **리뷰는 한 명씩 순차 처리한다.** 전체 코드를 한꺼번에 컨텍스트에 올리지 않는다.
 
 **`skipReview: true` 항목 → 코드를 읽지 않는다 (토큰 0):**
-- 자동 만점 처리: `criteriaScore = maxCriteriaScore`, `deductions = ""`
+- `autoDeductions` 비어있음: 만점 처리 `criteriaScore = maxCriteriaScore`, `deductions = ""`
+- `autoDeductions` 있음: `criteriaScore = maxCriteriaScore + sum(autoDeductions[].points)`, `deductions` = `-{pts}: {label}` 형식으로 조합
 
 **동일 `codeHash`를 가진 학생이 이미 채점된 경우:**
 - 해당 학생의 `deductions` 결과를 그대로 복사한다 — 코드 Read 생략
@@ -82,7 +100,7 @@ node lib/prepare.js
 **`skipReview: false` 항목 → 코드 리뷰 수행:**
 - Read 툴로 `codePath` 파일을 로드한다 (JSON에 코드 본문 없음)
 - `criteria.md` 각 항목에서 **감점 요인만** 확인
-- `staticChecks` 의 `false` 항목은 이미 감점 사유 — criteria.md와 대조해 점수 반영
+- `staticChecks` 는 참고용이며 감점에 반영하지 않는다
 - 코드의 장점, 칭찬, 설명은 **절대 출력하지 않는다** — 감점 라인만 출력
 - 항목 미충족 → 해당 배점만큼 감점 / 충족 → 넘어감 (언급 없음)
 - 컴파일 실패 시: 기능 구현 점수 0점, 컴파일 오류 메시지 기록
@@ -105,11 +123,11 @@ node lib/prepare.js
     "studentName": "홍길동",
     "filename": "main.cpp",
     "compiled": true,
-    "compileScore": 10,
+    "compileScore": 0,
     "compileError": "",
     "criteriaScore": 80,
     "maxCriteriaScore": 90,
-    "totalScore": 90,
+    "totalScore": 80,
     "deductions": "-5: 반환값 누락\n-5: 변수명 불명확"
   }
 ]
@@ -131,6 +149,64 @@ node lib/save-results.js /tmp/grade_results.json
 - 점수 분포 (최고 / 최저 / 평균)
 - 저장된 Excel 파일 경로
 - `student_code/` 폴더는 사용자가 확인 후 직접 삭제하도록 안내
+
+선택: 채점 결과 HTML 대시보드 생성:
+
+```bash
+node lib/dashboard.js /tmp/grade_results.json
+# → output/dashboard.html 생성 (브라우저에서 바로 열기 가능)
+```
+
+---
+
+## /review 커맨드
+
+`/grade` 완료 후 코드 품질 피드백을 생성한다. 채점 점수와는 **무관**하며 학습용 피드백 전용이다.
+
+### 1단계 — 리뷰 대상 파악
+
+`/tmp/grade_results.json` (또는 마지막 `/grade` 결과)을 읽는다.
+
+### 2단계 — 리뷰 기준 파악
+
+`review_rubric.md`를 읽어 리뷰 항목과 출력 형식을 파악한다.
+
+### 3단계 — 코드 리뷰 (한 명씩 순차 처리)
+
+**`skipReview: true` 항목 → 리뷰 생략** (코드 Read 없음, 토큰 0):
+- `aiFeedback: "(없음)"`, `suggestions: ""`
+
+**동일 `codeHash`를 가진 학생이 이미 리뷰된 경우 → 결과 복사** (코드 Read 생략)
+
+**`skipReview: false` 항목 → 코드 리뷰 수행:**
+- Read 툴로 `codePath` 파일 로드
+- `review_rubric.md` 항목별 평가
+- **감점/개선 사항만** 간결하게 기록. 칭찬·설명 출력 금지
+- 모든 항목이 양호하면 `aiFeedback: "(없음)"`
+
+### 4단계 — 결과 저장
+
+아래 JSON 형식으로 `/tmp/review_results.json`에 저장한 뒤 스크립트를 실행한다.
+
+```json
+[
+  {
+    "studentId": "202037083",
+    "hwNum": "1",
+    "filename": "hw1-2.cpp",
+    "aiFeedback": "변수명 불명확(t, s), return 0 누락",
+    "suggestions": "1. 변수명을 역할에 맞게 변경\n2. main() 끝에 return 0 추가"
+  }
+]
+```
+
+```bash
+node lib/save-results.js /tmp/grade_results.json --reviews /tmp/review_results.json
+```
+
+**저장 동작:** 기존 Excel의 'AI 피드백' 열에 기록. 열이 없으면 자동 추가.
+
+---
 
 ## 주의사항
 

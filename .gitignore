@@ -1,7 +1,9 @@
 node_modules/
 output/
-students/*.o
-students/student_A
-students/student_B
+students/
+student_code/
+grader.db
+grader.db-shm
+grader.db-wal
 *.dSYM/
 .DS_Store

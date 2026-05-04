@@ -1,0 +1,11 @@
+{
+  "mode": "regex",
+  "cases": [
+    {
+      "input": "100\n3\n19\n3\n4\n",
+      "pattern": "\\b22(?:\\.\\d+)?\\b",
+      "desc": "100 3 19 3 4 → 22",
+      "deduction": {"label": "Total cost 계산 오류", "points": -2}
+    }
+  ]
+}

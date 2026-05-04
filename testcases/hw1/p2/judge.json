@@ -1,0 +1,9 @@
+{
+  "mode": "contains_integer",
+  "cases": [
+    { "input": "99\n",    "expected": 2, "desc": "count_9(99)=2",    "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "12345\n", "expected": 0, "desc": "count_9(12345)=0", "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "99999\n", "expected": 5, "desc": "count_9(99999)=5", "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "9\n",     "expected": 1, "desc": "count_9(9)=1",     "deduction": {"label": "결과 오류", "points": -2} }
+  ]
+}

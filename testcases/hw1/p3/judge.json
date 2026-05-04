@@ -1,0 +1,8 @@
+{
+  "mode": "custom",
+  "cases": [
+    { "input": "12321\n", "isPalindrome": true,  "desc": "12321=palindrome",     "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "12345\n", "isPalindrome": false, "desc": "12345=not palindrome", "deduction": {"label": "결과 오류", "points": -2} },
+    { "input": "11211\n", "isPalindrome": true,  "desc": "11211=palindrome",     "deduction": {"label": "결과 오류", "points": -2} }
+  ]
+}

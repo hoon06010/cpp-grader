@@ -5,10 +5,12 @@
   "main": "grade.js",
   "scripts": {
     "grade": "node grade.js",
-    "update-criteria": "node lib/pptx-to-criteria.js"
+    "update-criteria": "node lib/pptx-to-criteria.js",
+    "dashboard": "node lib/dashboard.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.17",
+    "better-sqlite3": "^9.6.0",
     "exceljs": "^4.4.0"
   },
   "engines": {
