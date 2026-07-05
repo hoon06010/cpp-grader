@@ -1,0 +1,25 @@
+{
+  "mode": "regex",
+  "cases": [
+    {
+      "input": "5\n3\n-4\n7\n-2\n8\n",
+      "pattern": "Positive sum:?\\s*[:=]?\\s*18",
+      "desc": "양수합 18 (3,7,8)"
+    },
+    {
+      "input": "5\n3\n-4\n7\n-2\n8\n",
+      "pattern": "Negative sum:?\\s*[:=]?\\s*-6",
+      "desc": "음수합 -6 (-4,-2)"
+    },
+    {
+      "input": "3\n10\n20\n30\n",
+      "pattern": "Positive sum:?\\s*[:=]?\\s*60",
+      "desc": "전부 양수: 합 60"
+    },
+    {
+      "input": "3\n10\n20\n30\n",
+      "pattern": "Negative sum:?\\s*[:=]?\\s*0",
+      "desc": "음수 없음: 합 0"
+    }
+  ]
+}

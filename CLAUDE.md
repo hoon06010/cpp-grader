@@ -9,7 +9,7 @@
 ```
 grader/
 ├── students/          # 채점할 .zip 파일을 여기에 넣는다
-│   └── hw1_20240001_홍길동.zip   # 형식: hw(숫자)_학번_이름.zip
+│   └── 홍길동_20240001.zip       # 형식: 이름_학번.zip (hw번호는 내부 cpp 파일명에서 자동 감지)
 ├── uploads/           # 채점 기준 PPTX 파일을 여기에 넣는다
 ├── student_code/      # 압축 해제된 학생 코드 (채점 후 보존)
 ├── criteria.md        # 채점 기준 및 배점 (PPTX → 자동 생성 가능)
@@ -49,7 +49,7 @@ node lib/pptx-to-criteria.js hw1.pptx    # 특정 파일 지정
 
 `/grade` 실행 시 아래 순서를 반드시 따른다.
 
-> **배치 처리:** `/grade`는 1회 실행 시 최대 10명(1배치)만 처리한다. 전체 학생 수가 10명 초과이면 여러 번 `/grade`를 실행한다. 배치 진행 상황은 `/tmp/grade_batch_{n}.json` 파일로 관리하며, 모든 배치 완료 후 병합해 Excel에 저장한다. 자세한 배치 흐름은 `.claude/commands/grade.md` 참조.
+> **배치 처리:** `/grade`는 1회 실행 시 최대 10명(1배치)만 처리한다. 전체 학생 수가 10명 초과이면 여러 번 `/grade`를 실행한다. 배치 진행 상황은 `output/batches/grade_batch_{n}.json` 파일로 관리하며, 모든 배치 완료 후 병합해 `output/grade_results.json`에 저장 후 Excel에 기록한다. 자세한 배치 흐름은 `.claude/commands/grade.md` 참조.
 
 ### 1단계 — 준비 (기계적 작업)
 
@@ -80,6 +80,7 @@ node lib/prepare.js [--sandbox rlimit|docker|none]
   - 모든 테스트케이스 통과 (`allTestsPassed`)
   - 실패 테스트케이스 전부에 deduction 메타데이터 존재 (`autoDeductions.length > 0`)
   - 참고: `staticChecks.allPassed`는 skipReview 조건에 포함되지 않음 (참고용)
+- `deductions` 필드: `prepare.js`가 `autoDeductions`에서 사전 계산하여 출력 — `skipReview: true` 항목의 감점 사유는 채점 단계에서 덮어쓰지 않는다
 - `--sandbox` 옵션: `rlimit`(기본, shell ulimit으로 메모리·CPU 제한) / `docker`(네트워크·파일시스템 완전 격리) / `none`(개발용)
 
 ### 2단계 — 채점 기준 파악
@@ -91,8 +92,10 @@ node lib/prepare.js [--sandbox rlimit|docker|none]
 **리뷰는 한 명씩 순차 처리한다.** 전체 코드를 한꺼번에 컨텍스트에 올리지 않는다.
 
 **`skipReview: true` 항목 → 코드를 읽지 않는다 (토큰 0):**
-- `autoDeductions` 비어있음: 만점 처리 `criteriaScore = maxCriteriaScore`, `deductions = ""`
-- `autoDeductions` 있음: `criteriaScore = maxCriteriaScore + sum(autoDeductions[].points)`, `deductions` = `-{pts}: {label}` 형식으로 조합
+- `deductions` 필드는 `prepare.js`가 이미 채워두었다 — **절대 덮어쓰지 않는다**
+- `autoDeductions` 비어있음: `criteriaScore = maxCriteriaScore`
+- `autoDeductions` 있음: `criteriaScore = maxCriteriaScore + sum(autoDeductions[].points)`
+- 두 경우 모두 `totalScore = compileScore + criteriaScore` 계산 후 반영
 
 **동일 `codeHash`를 가진 학생이 이미 채점된 경우:**
 - 해당 학생의 `deductions` 결과를 그대로 복사한다 — 코드 Read 생략
@@ -109,7 +112,11 @@ node lib/prepare.js [--sandbox rlimit|docker|none]
 - `criteriaScore` — criteria.md 기준 획득 점수 (만점 - 감점 합계)
 - `maxCriteriaScore` — criteria.md 기준 만점
 - `totalScore` — `compileScore + criteriaScore`
-- `deductions` — 감점 항목과 점수를 한 줄씩 나열 (예: `-5: 반환값 누락\n-3: 변수명 불명확`) / 감점 없으면 빈 문자열
+- `deductions` — 감점 항목과 점수를 한 줄씩 나열 / 감점 없으면 빈 문자열
+  - 단일 파일 제출: `-5: 반환값 누락\n-3: 변수명 불명확`
+  - 여러 파일 제출(기존 Excel 업데이트 모드): `[Lab1-2.c] -5: getRand 난수 범위 오류\n[Lab1-3.c] -3: 최솟값 누락` 형태로 파일명 prefix 필수
+- `needsReview` — 판단이 애매해 사용자 직접 확인이 필요하면 `true` (기본 `false`)
+- `reviewNote` — `needsReview: true`일 때 확인 이유 (예: `"HW1 홍길동 직접 확인 바람: 부분 구현 여부 불명확"`)
 
 ### 4단계 — 결과 저장
 
@@ -128,7 +135,9 @@ node lib/prepare.js [--sandbox rlimit|docker|none]
     "criteriaScore": 80,
     "maxCriteriaScore": 90,
     "totalScore": 80,
-    "deductions": "-5: 반환값 누락\n-5: 변수명 불명확"
+    "deductions": "-5: 반환값 누락\n-5: 변수명 불명확",
+    "needsReview": false,
+    "reviewNote": ""
   }
 ]
 ```
@@ -148,6 +157,7 @@ node lib/save-results.js /tmp/grade_results.json
 - 컴파일 성공 / 실패 현황
 - 점수 분포 (최고 / 최저 / 평균)
 - 저장된 Excel 파일 경로
+- **직접 확인 필요 항목** (`needsReview: true`): 학생명과 이유를 목록으로 출력
 - `student_code/` 폴더는 사용자가 확인 후 직접 삭제하도록 안내
 
 선택: 채점 결과 HTML 대시보드 생성:

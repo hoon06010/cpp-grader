@@ -1,9 +1,20 @@
 {
-  "mode": "contains_integer",
+  "mode": "regex",
   "cases": [
-    { "input": "99\n",    "expected": 2, "desc": "count_9(99)=2",    "deduction": {"label": "결과 오류", "points": -2} },
-    { "input": "12345\n", "expected": 0, "desc": "count_9(12345)=0", "deduction": {"label": "결과 오류", "points": -2} },
-    { "input": "99999\n", "expected": 5, "desc": "count_9(99999)=5", "deduction": {"label": "결과 오류", "points": -2} },
-    { "input": "9\n",     "expected": 1, "desc": "count_9(9)=1",     "deduction": {"label": "결과 오류", "points": -2} }
+    {
+      "input": "8\n95 82 67 45 78 88 92 75\nB\n",
+      "pattern": "A:\\s*2,\\s*B:\\s*2,\\s*C:\\s*2,\\s*D:\\s*1,\\s*F:\\s*1",
+      "desc": "학점별 카운트 A2 B2 C2 D1 F1"
+    },
+    {
+      "input": "8\n95 82 67 45 78 88 92 75\nB\n",
+      "pattern": "2\\s+6",
+      "desc": "grade B 검색 결과: 학생 2, 6"
+    },
+    {
+      "input": "8\n95 82 67 45 78 88 92 75\nA\n",
+      "pattern": "1\\s+7",
+      "desc": "grade A 검색 결과: 학생 1, 7"
+    }
   ]
 }
